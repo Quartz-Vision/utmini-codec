@@ -7,7 +7,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#define LINE_ALIGNMENT_PAD 16
+#ifndef LINE_ALIGNMENT_PAD
+    #define LINE_ALIGNMENT_PAD 0
+#endif
 
 
 typedef struct VideoContext {
