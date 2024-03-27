@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [validation]
+    permissions:
+      contents: write
+    steps:
+      - name: Install dependencies
+        run: |
+          apt install make tar
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Read version
+        run: |
+          echo "PKG_VERSION=$(sed -n 's/.*VERSION *= *\(.*\) *$/\1/p' config.mk)" >> $GITHUB_ENV
+      
+      - name: Build lib
+        run: |
+          make build-lib
+          cd out/build
+          tar -czvf ../../utmini-codec.tar.gz .
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: ${{ env.PKG_VERSION }}
+          tag: ${{ env.PKG_VERSION }}
+          commit: "main"
+          draft: false
+          with:
+            artifacts: "utmini-codec.tar.gz"

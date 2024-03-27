@@ -1,3 +1,6 @@
+VERSION = 0.1.0
+BIN_NAME = utminidec.a
+
 INCS =
 LIBS =
 
