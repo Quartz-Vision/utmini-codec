@@ -37,5 +37,4 @@ jobs:
           tag: ${{ env.PKG_VERSION }}
           commit: "main"
           draft: false
-          with:
-            artifacts: "utmini-codec.tar.gz"
+          artifacts: "utmini-codec.tar.gz"
