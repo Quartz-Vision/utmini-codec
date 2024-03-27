@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "C Launch (Linux, gdb)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/test",
+            "args": [
+                "/static/projects/quartz/quartz-codec/out.lav",
+                "out.raw"
+            ],
+            "cwd": "${workspaceFolder}/",
+            "stopAtEntry": false,
+            "environment": [],
+            "MIMode": "gdb"
+        }
+    ]
+}
