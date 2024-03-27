@@ -32,7 +32,7 @@ options:
 	@echo ""
 
 ${OUT_DIR}:
-	mkdir -p $@ $@/build/{lib,include}
+	mkdir -p $@ $@/build/lib $@/build/include
 
 # ${OUT_DIR}/%.o: %.c ${HEADERS} config.mk | ${OUT_DIR}
 # 	${CC} -c ${CFLAGS} ${DEFFLAGS} $< -o $@
