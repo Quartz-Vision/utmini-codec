@@ -1,7 +1,7 @@
-VERSION = 0.1.1
+VERSION = 0.2.0
 BIN_NAME = utminidec.a
 
-INCS =
+INCS = -I.
 LIBS =
 
 # flags

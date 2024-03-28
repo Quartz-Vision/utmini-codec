@@ -3,8 +3,6 @@
 #ifndef __UT_UTILS_H__
 #define __UT_UTILS_H__
 
-#include <asm-generic/errno-base.h>
-#include <asm-generic/errno.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -57,6 +55,9 @@ typedef union U64 {
 #define av_assert0(cond)
 #define av_assert1(cond)
 
+#define EINVAL 22
+#define ENOSYS 38
+#define ENOMEM 12
 #define AVERROR(e) (-(e))
 #define AVERROR_INVALIDDATA AVERROR(EINVAL)
 #define AVERROR_PATCHWELCOME AVERROR(ENOSYS)

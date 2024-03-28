@@ -44,6 +44,9 @@ ${OUT_DIR}:
 build-lib: | ${OUT_DIR} # | ${OUT_DIR}/build/lib/${BIN_NAME}
 	cp -r ${HEADERS} ${OUT_DIR}/build/include
 
+build-test-read: | ${OUT_DIR}
+	${CC} -o ${OUT_DIR}/test-read tests/read.c ${CFLAGS} ${DEFFLAGS} ${LDFLAGS}
+
 clean:
 	rm -rf ${OUT_DIR}
 	rm -rf ${DIST_DIR}
