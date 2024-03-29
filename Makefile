@@ -13,7 +13,6 @@ HEADERS = \
 	decoder.h \
 	defs.h \
 	mem.h \
-	reverse.h \
 	utils.h \
 	video.h \
 	vlc.h
