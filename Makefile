@@ -21,6 +21,9 @@ HEADERS = \
 OBJ = $(addprefix ${OUT_DIR}/,${SRC:.c=.o})
 DIST_ASSETS = LICENSE Makefile README.md config.mk ${HEADERS} ${SRC}
 
+TESTS = \
+	read
+
 all: options build-lib
 
 options:
@@ -32,7 +35,7 @@ options:
 	@echo ""
 
 ${OUT_DIR}:
-	mkdir -p $@ $@/build/lib $@/build/include
+	mkdir -p $@ $@/build/lib $@/build/include $@/tests
 
 # ${OUT_DIR}/%.o: %.c ${HEADERS} config.mk | ${OUT_DIR}
 # 	${CC} -c ${CFLAGS} ${DEFFLAGS} $< -o $@
@@ -41,11 +44,15 @@ ${OUT_DIR}:
 # 	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 
-build-lib: | ${OUT_DIR} # | ${OUT_DIR}/build/lib/${BIN_NAME}
+build-lib: options | ${OUT_DIR} # | ${OUT_DIR}/build/lib/${BIN_NAME}
 	cp -r ${HEADERS} ${OUT_DIR}/build/include
 
-build-test-read: | ${OUT_DIR}
-	${CC} -o ${OUT_DIR}/test-read tests/read.c ${CFLAGS} ${DEFFLAGS} ${LDFLAGS}
+
+build-tests: options | ${OUT_DIR}
+	@for test in ${TESTS}; do \
+		${CC} ${CFLAGS} ${DEFFLAGS} tests/$$test.c -o ${OUT_DIR}/tests/$$test; \
+	done
+
 
 clean:
 	rm -rf ${OUT_DIR}

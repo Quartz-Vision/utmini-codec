@@ -19,8 +19,8 @@ typedef union U64 {
     U64P p;
 } av_union U64;
 
-#define READ_ULE(n, p) (*(const uint##n##_t *)(p))
-#define WRITE_ULE(n, p, v) (*(uint##n##_t *)(p) = (v))
+#define READ_ULE(n, p) (*(const uint##n##_t *)(void*)(p))
+#define WRITE_ULE(n, p, v) (*(uint##n##_t *)(void*)(p) = (v))
 #define COPY_ULE(n, d, s) (WRITE_ULE(n, d, READ_ULE(n, s)))
 #define CONSUME_ULE(n, p) (*(*(const uint##n##_t**)&(p))++)
 
@@ -68,6 +68,10 @@ typedef union U64 {
 #define AV_BSWAP64C(x) (AV_BSWAP32C(x) << 32 | AV_BSWAP32C((x) >> 32))
 
 
+static av_pure_expr uint16_t av_bswap16(uint16_t x) {
+    return AV_BSWAP16C(x);
+}
+
 static av_pure_expr uint32_t av_bswap32(uint32_t x) {
     return AV_BSWAP32C(x);
 }
@@ -79,7 +83,6 @@ static av_pure_expr uint64_t av_bswap64(uint64_t x) {
 
 static void bswap_buf(uint32_t *dst, const uint32_t *src, int w) {
     int i;
-
     for (i = 0; i + 8 <= w; i += 8) {
         dst[i + 0] = av_bswap32(src[i + 0]);
         dst[i + 1] = av_bswap32(src[i + 1]);
@@ -95,7 +98,7 @@ static void bswap_buf(uint32_t *dst, const uint32_t *src, int w) {
 }
 
 
-const uint8_t ff_reverse[256] = {
+static const uint8_t ff_reverse[256] = {
 0x00,0x80,0x40,0xC0,0x20,0xA0,0x60,0xE0,0x10,0x90,0x50,0xD0,0x30,0xB0,0x70,0xF0,
 0x08,0x88,0x48,0xC8,0x28,0xA8,0x68,0xE8,0x18,0x98,0x58,0xD8,0x38,0xB8,0x78,0xF8,
 0x04,0x84,0x44,0xC4,0x24,0xA4,0x64,0xE4,0x14,0x94,0x54,0xD4,0x34,0xB4,0x74,0xF4,
@@ -114,7 +117,7 @@ const uint8_t ff_reverse[256] = {
 0x0F,0x8F,0x4F,0xCF,0x2F,0xAF,0x6F,0xEF,0x1F,0x9F,0x5F,0xDF,0x3F,0xBF,0x7F,0xFF,
 };
 
-static av_always_inline uint32_t bitswap_32(uint32_t x)
+static av_pure_expr uint32_t bitswap_32(uint32_t x)
 {
     return (uint32_t)ff_reverse[ x        & 0xFF] << 24 |
            (uint32_t)ff_reverse[(x >> 8)  & 0xFF] << 16 |

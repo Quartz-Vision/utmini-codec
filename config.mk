@@ -1,4 +1,4 @@
-VERSION = 0.2.0
+VERSION = 0.2.1
 BIN_NAME = utminidec.a
 
 INCS = -I.

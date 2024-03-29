@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <memory.h>
 
+#include "defs.h"
 #include "utils.h"
 #include "bitstream.h"
 #include "mem.h"
@@ -79,7 +80,7 @@ typedef struct VLCcode {
 }
 
 
-static inline int vlc_set_idx(
+static av_always_inline int vlc_set_idx(
     BitstreamContext * restrict bc,
     const int code,
     int * restrict n,
@@ -87,7 +88,7 @@ static inline int vlc_set_idx(
     const VLCElem * table
 ) {
     *nb_bits = -*n;
-    const unsigned idx = bits_peek(bc, *nb_bits) + code;
+    const unsigned idx = bits_peek16(bc, *nb_bits) + code;
     *n = table[idx].len;
     return table[idx].sym;
 }
@@ -104,7 +105,7 @@ static inline int vlc_read_multi(
     const VLCElem *const table
 ) {
     // Read BITS bits from the cache (refilling it if necessary)
-    const unsigned idx = bits_peek(bc, UT_VLC_BITS);
+    const unsigned idx = bits_peek16(bc, UT_VLC_BITS);
 
     int ret, nb_bits, code, n = Jtable[idx].len;
     if (Jtable[idx].num) {
@@ -115,7 +116,7 @@ static inline int vlc_read_multi(
         n = table[idx].len;
         if (n < 0) {  // depth 2
             bits_skip(bc, UT_VLC_BITS);
-
+            
             code = vlc_set_idx(bc, code, &n, &nb_bits, table);
             if (n < 0) {  // depth 3
                 bits_skip(bc, nb_bits);
@@ -135,7 +136,7 @@ static inline int vlc_read(
     BitstreamContext *bc, const VLCElem *table
 ) {
     int nb_bits;
-    unsigned idx = bits_peek(bc, UT_VLC_BITS);
+    unsigned idx = bits_peek16(bc, UT_VLC_BITS);
     int code     = table[idx].sym;
     int n        = table[idx].len;
 
@@ -433,7 +434,7 @@ static int vlc_init_common(VLC *vlc, int nb_codes,
 int vlc_init_multi_from_lengths(
     VLC *vlc, VLC_MULTI *multi,
     int nb_codes,
-    const int8_t *lens, int lens_wrap,
+    const uint8_t *lens, int lens_wrap,
     const void *symbols, int symbols_wrap
 ) {
     VLCcode localbuf[LOCALBUF_ELEMS], *buf = localbuf;

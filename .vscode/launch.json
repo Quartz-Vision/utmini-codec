@@ -5,7 +5,7 @@
             "name": "C Launch (Linux, gdb)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/test",
+            "program": "${workspaceFolder}/out/tests/read",
             "args": [
                 "/static/projects/quartz/quartz-codec/out.lav",
                 "out.raw"

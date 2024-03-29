@@ -1,53 +1,64 @@
 #include "defs.h"
-#define VLC_BITS 11
-
 #include "video.h"
-#include <stdlib.h>
-
-#define CACHED_BITSTREAM_READER true
-#define UNCHECKED_BITSTREAM_READER 1
-
-
-#define COLOR_PLANES 3
-
 #include <stddef.h>
 #include <stdint.h>
 #include <memory.h>
-
 #include "utils.h"
 #include "bitstream.h"
 #include "bytestream.h"
 #include "vlc.h"
-#include "reverse.h"
 
 
 static void restore_rgb_planes(
-    uint8_t *src_r,
-    uint8_t *src_g,
-    uint8_t *src_b,
+    uint8_t *r,
+    uint8_t *g,
+    uint8_t *b,
     ptrdiff_t linesize,
     int width, int height,
     uint32_t *out
 ) {
-    uint8_t r, g, b;
     int i, j;
+    int rest = linesize - width;
+    uint64_t r0, g0, b0;
 
     for (j = 0; j < height; j++) {
-        for (i = 0; i < width; i++) {
-            r = src_r[i];
-            g = src_g[i];
-            b = src_b[i];
+        for (i = 0; i < width; i += 8) {
+            r0 = READ_U64(r);
+            g0 = READ_U64(g);
+            b0 = READ_U64(b);
+
+            b0 = b0 + g0 - 0x8080808080808080ull;
+            r0 = r0 + g0 - 0x8080808080808080ull;
             
-            out[i] = 0xFF000000 | (
-                (uint32_t)((b + g - 0x80) << 16)
-                | (g << 8)
-                | (uint8_t)(r + g - 0x80)
-            );
+#define U64_READ_U8(v, i) (uint8_t)(((uint64_t)v & (0xFFull << i)) >> i)
+
+#define NEW_OUT(x) (0xFF000000 | (             \
+    (uint32_t)                                 \
+    (U64_READ_U8(b0, x) << 16)                 \
+    | (U64_READ_U8(g0, x) << 8)                \
+    | (U64_READ_U8(r0, x) & 0x000000FF)        \
+))                                             \
+
+            *(out++) = NEW_OUT(0);
+            *(out++) = NEW_OUT(8);
+            *(out++) = NEW_OUT(16);
+            *(out++) = NEW_OUT(24);
+            *(out++) = NEW_OUT(32);
+            *(out++) = NEW_OUT(40);
+            *(out++) = NEW_OUT(48);
+            *(out++) = NEW_OUT(56);
+
+#undef NEW_OUT
+#undef U64_READ_U8
+
+            r+=8;
+            g+=8;
+            b+=8;
         }
-        src_r += linesize;
-        src_g += linesize;
-        src_b += linesize;
-        out += linesize;
+        r += rest;
+        g += rest;
+        b += rest;
+        out += rest;
     }
 }
 
@@ -57,12 +68,33 @@ static int add_left_pred(
 ) {
     int i;
 
-    for (i = 0; i < w - 1; i++) {
-        acc   += src[i];
-        dst[i] = acc;
-        i++;
-        acc   += src[i];
-        dst[i] = acc;
+    if (w >= 8) {
+        for (i = 0; i < w - 7; i += 8) {
+            acc   += src[i];
+            dst[i] = acc;
+            acc   += src[i + 1];
+            dst[i + 1] = acc;
+            acc   += src[i + 2];
+            dst[i + 2] = acc;
+            acc   += src[i + 3];
+            dst[i + 3] = acc;
+            acc   += src[i + 4];
+            dst[i + 4] = acc;
+            acc   += src[i + 5];
+            dst[i + 5] = acc;
+            acc   += src[i + 6];
+            dst[i + 6] = acc;
+            acc   += src[i + 7];
+            dst[i + 7] = acc;
+        }
+    } else {
+        for (i = 0; i < w - 1; i++) {
+            acc   += src[i];
+            dst[i] = acc;
+            i++;
+            acc   += src[i];
+            dst[i] = acc;
+        }
     }
 
     for (; i < w; i++) {
@@ -219,47 +251,43 @@ static int decode_plane(
         // After the int64 read, we can read the bits and we read them from the end.
         // Ex:
         // Read 11 bits from 0x11'10'0F'0E|0D'0C'0B'0A and we get 0x04'0B'0A
-
-        memset(ctx->slice_buf + slice_size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+        
         bswap_buf(
             (uint32_t *) ctx->slice_buf,
             (uint32_t *)(src + slice_data_start + ctx->slices * 4),
             (slice_data_end - slice_data_start + 3) >> 2
         );
-        bits_init(&gb, ctx->slice_buf, slice_size * 8);
+        bits_init(&gb, ctx->slice_buf, slice_size << 3);
 
         prev = 0x80;
         for (j = sstart; j < send; j++) {
             buf = ctx->vlc_buf;
-            i = 0; 
-            while(i < (width - PLANE_END_PAD) && bits_get_left(&gb) > 0) {
+            i = 0;
+            while(i < (width - PLANE_END_PAD)) {
                 ret = vlc_read_multi(
                     &gb,
-                    (uint8_t *)buf + i,
+                    buf + i,
                     multi.table,
                     vlc.table
                 );
 
-                if (ret > 0)
-                    i += ret;
-                else
+                i += ret;
+                
+                if (ret <= 0)
                     goto fail;
             }
-            for (; i < width && bits_get_left(&gb) > 0; i++)
+            for (; i < width; i++)
                 buf[i] = vlc_read(&gb, vlc.table);
             
             // ???
-            add_left_pred((uint8_t *)dest, (const uint8_t *)buf, width, prev);
+            add_left_pred(dest, buf, width, prev);
             prev = dest[width-1];
             dest += stride;
         }
-        if (bits_get_left(&gb) > 32)
-            log_info("%d bits left after decoding slice\n", bits_get_left(&gb));
     }
 
     vlc_free(&vlc);
     vlc_free_multi(&multi);
-
     return 0;
 fail:
     vlc_free(&vlc);
@@ -285,7 +313,7 @@ static int decode_frame(VideoContext * ctx, int *got_frame)
     /* parse plane structure to get frame flags and validate slice offsets */
     bytestream_init(&gb, buf, buf_size);
 
-    for (i = 0; i < COLOR_PLANES; i++) {
+    for (i = 0; i < UT_COLOR_PLANES; i++) {
         plane_start[i] = gb.buffer;
         if (bytestream_get_bytes_left(&gb) < 256 + 4 * ctx->slices) {
             log_info("Insufficient data for a plane\n");
@@ -308,9 +336,9 @@ static int decode_frame(VideoContext * ctx, int *got_frame)
         plane_size = slice_end;
         bytestream_skipu(&gb, plane_size);
     }
-    plane_start[COLOR_PLANES] = gb.buffer;
+    plane_start[UT_COLOR_PLANES] = gb.buffer;
     
-    for (i = 0; i < COLOR_PLANES; i++) {
+    for (i = 0; i < UT_COLOR_PLANES; i++) {
         ret = decode_plane(
             ctx, i, ctx->frame_data[i], ctx->linesize, ctx->w, ctx->h, plane_start[i]
         );

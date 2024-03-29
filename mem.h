@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#define MEM_ALIGN_SIZE 4
+#define MEM_ALIGN_SIZE 32
 
 void av_always_inline * av_malloc(size_t size) {
     return aligned_alloc(MEM_ALIGN_SIZE, size);
